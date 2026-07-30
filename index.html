@@ -144,12 +144,13 @@
         }
         .btn-tap:active { background: var(--color-pulso); color: #000; }
 
-        .btn-vibracion {
-            grid-column: span 2; background: transparent; border: 1px solid #555; color: #888;
-            padding: 10px; border-radius: 8px; font-weight: 900; font-size: 1em; cursor: pointer; transition: 0.3s;
-            display: flex; justify-content: center; align-items: center; gap: 8px;
+        .btn-opcion {
+            background: transparent; border: 1px solid #555; color: #888;
+            padding: 10px; border-radius: 8px; font-weight: 900; font-size: 0.9em; cursor: pointer; transition: 0.3s;
+            display: flex; justify-content: center; align-items: center; gap: 5px;
         }
-        .btn-vibracion.on { background: rgba(255, 140, 0, 0.15); border-color: var(--color-subdiv); color: var(--color-subdiv); }
+        .btn-opcion.on-sonido { background: rgba(0, 243, 255, 0.15); border-color: var(--color-pulso); color: var(--color-pulso); }
+        .btn-opcion.on-vib { background: rgba(255, 140, 0, 0.15); border-color: var(--color-subdiv); color: var(--color-subdiv); }
     </style>
 </head>
 <body>
@@ -221,7 +222,10 @@
 
                 <button class="btn-tap" id="btn-tap" onclick="tapTempo()">🖐️ TAP TEMPO</button>
                 
-                <button class="btn-vibracion" id="btn-vib" onclick="toggleVibracion()">
+                <button class="btn-opcion on-sonido" id="btn-sonido" onclick="toggleSonido()">
+                    🔊 SONIDO: ON
+                </button>
+                <button class="btn-opcion" id="btn-vib" onclick="toggleVibracion()">
                     📳 VIBRACIÓN: OFF
                 </button>
             </div>
@@ -295,6 +299,7 @@
 
         let tapTimes = [];
         let vibracionActiva = false;
+        let sonidoActivo = true;
 
         function actualizarSlider(val) {
             bpm = parseInt(val);
@@ -308,14 +313,24 @@
             document.getElementById('bpm-display').innerText = bpm;
         }
 
+        function toggleSonido() {
+            sonidoActivo = !sonidoActivo;
+            let btn = document.getElementById('btn-sonido');
+            if(sonidoActivo) {
+                btn.classList.add('on-sonido'); btn.innerHTML = "🔊 SONIDO: ON";
+            } else {
+                btn.classList.remove('on-sonido'); btn.innerHTML = "🔇 SONIDO: OFF";
+            }
+        }
+
         function toggleVibracion() {
             vibracionActiva = !vibracionActiva;
             let btn = document.getElementById('btn-vib');
             if(vibracionActiva) {
-                btn.classList.add('on'); btn.innerHTML = "📳 VIBRACIÓN: ON";
-                if(navigator.vibrate) navigator.vibrate(50); // Test
+                btn.classList.add('on-vib'); btn.innerHTML = "📳 VIBRACIÓN: ON";
+                if(navigator.vibrate) navigator.vibrate(120); // Test de vibración mucho más fuerte
             } else {
-                btn.classList.remove('on'); btn.innerHTML = "📳 VIBRACIÓN: OFF";
+                btn.classList.remove('on-vib'); btn.innerHTML = "📳 VIBRACIÓN: OFF";
             }
         }
 
@@ -410,6 +425,8 @@
             // Guardamos para la animación visual
             notesInQueue.push({ beat: beatNum, sub: subNum, time: time });
             
+            if (!sonidoActivo) return; // Si apagaron el sonido, evitamos generar ruido pero mantenemos el visual
+
             // SÍNTESIS DE SONIDO ANALÓGICO (Woodblock / Click de madera)
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -492,11 +509,11 @@
                         if (drawBeat === 0) {
                             dot.classList.add('active-acento');
                             triggerFlash('acento');
-                            if (vibracionActiva && navigator.vibrate) navigator.vibrate(60); // Fuerte
+                            if (vibracionActiva && navigator.vibrate) navigator.vibrate(120); // Mucho más fuerte
                         } else {
                             dot.classList.add('active-pulso');
                             triggerFlash('pulso');
-                            if (vibracionActiva && navigator.vibrate) navigator.vibrate(25); // Corta
+                            if (vibracionActiva && navigator.vibrate) navigator.vibrate(50); // Intermedia
                         }
                     }
                 } else {
@@ -505,7 +522,7 @@
                     if (subDot) {
                         subDot.classList.add('active-sub');
                         triggerFlash('subdiv');
-                        if (vibracionActiva && navigator.vibrate) navigator.vibrate(10); // Micro-vibracion
+                        if (vibracionActiva && navigator.vibrate) navigator.vibrate(20); // Micro-vibracion
                     }
                 }
                 
@@ -553,6 +570,16 @@
                 document.body.classList.remove('flash-acento', 'flash-pulso', 'flash-subdiv');
                 document.getElementById('marco-metronomo').classList.remove('flash-acento', 'flash-pulso');
             }
+        }
+    </script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js?v=metronomo1')
+                    .then(reg => console.log('SW Registrado'))
+                    .catch(err => console.log('Error SW:', err));
+            });
         }
     </script>
 </body>
