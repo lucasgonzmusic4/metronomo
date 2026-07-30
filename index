@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>Metrónomo - Lucas Gonzalez</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icono.png">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700;900&display=swap');
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        :root {
+            --color-acento: #ff00ff; /* Fucsia para el tiempo 1 */
+            --color-pulso: #00f3ff;  /* Cian para los tiempos débiles */
+            --color-subdiv: #FF8C00; /* Naranja para las subdivisiones */
+            --color-bg: #050508;
+            --color-panel: rgba(15, 15, 20, 0.85);
+        }
+
+        html, body {
+            background-color: var(--color-bg); color: #ffffff;
+            font-family: 'Rajdhani', sans-serif; margin: 0; padding: 0; 
+            overflow-x: hidden; user-select: none; -webkit-user-select: none;
+            touch-action: manipulation; transition: background-color 0.1s;
+        }
+
+        /* Flash Visual de Fondo */
+        body.flash-acento { background-color: rgba(255, 0, 255, 0.15); }
+        body.flash-pulso { background-color: rgba(0, 243, 255, 0.1); }
+        body.flash-subdiv { background-color: rgba(255, 140, 0, 0.05); }
+
+        .sticky-bar {
+            position: sticky; top: 0; background: rgba(5,5,10,0.95); backdrop-filter: blur(10px);
+            z-index: 1000; padding: 15px; border-bottom: 2px solid var(--color-pulso);
+            display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
+            box-shadow: 0 4px 15px rgba(0, 243, 255, 0.1); transition: 0.2s;
+        }
+        
+        .sticky-btn {
+            background: transparent; border: 2px solid var(--color-pulso); color: var(--color-pulso);
+            padding: 8px 15px; border-radius: 5px; font-weight: 900; font-family: 'Rajdhani', sans-serif;
+            cursor: pointer; font-size: 1.1em; transition: 0.3s; letter-spacing: 1px;
+        }
+        .sticky-btn:active { background: var(--color-pulso); color: #000; }
+        
+        .titulo-app {
+            color: var(--color-pulso); font-family: 'Orbitron', sans-serif; font-size: 2.5em; font-weight: 900; 
+            text-align: center; margin-top: 30px; letter-spacing: 5px; text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.5); padding: 0 10px;
+        }
+
+        .titulo-activacion {
+            color: var(--color-acento); font-family: 'Orbitron', sans-serif; font-size: 1.8em; 
+            font-weight: 900; text-align: center; margin-top: 40px; letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
+        }
+
+        .pantalla { display: none; width: 100vw; min-height: 100vh; flex-direction: column; align-items: center; padding-bottom: 50px; }
+        .activa { display: flex; }
+
+        .btn-principal {
+            font-family: 'Rajdhani', sans-serif; padding: 18px 25px; margin: 10px; font-size: 1.2em; font-weight: 800;
+            cursor: pointer; border-radius: 8px; transition: 0.3s; width: 85%; max-width: 380px; text-transform: uppercase; letter-spacing: 2px;
+            display: flex; justify-content: center; align-items: center; border: none; flex-direction: column; line-height: 1.2;
+        }
+        .btn-cian { background: linear-gradient(45deg, #0055ff, var(--color-pulso)); color: #fff; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
+        .btn-cian:active { transform: scale(0.95); box-shadow: 0 0 30px rgba(0, 243, 255, 0.8); }
+        
+        .btn-fucsia { background: transparent; color: var(--color-acento); border: 2px solid var(--color-acento); box-shadow: 0 0 15px rgba(255, 0, 255, 0.2); }
+        .btn-fucsia:active { background: var(--color-acento); color: #000; box-shadow: 0 0 30px rgba(255, 0, 255, 0.8); }
+
+        .btn-play { background: #fff; color: #000; font-size: 1.5em; font-weight: 900; box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); transition: all 0.1s;}
+        .btn-play.activo { background: var(--color-acento); color: #fff; box-shadow: 0 0 25px var(--color-acento); }
+
+        .input-cyber {
+            font-family: 'Rajdhani', sans-serif; width: 90%; max-width: 420px; padding: 15px;
+            background-color: rgba(255,255,255,0.05); color: #fff; border: 1px solid #444;
+            border-radius: 5px; font-size: 1.2em; outline: none; box-sizing: border-box; font-weight: bold; margin-bottom: 20px;
+        }
+
+        .metronomo-container {
+            width: 90%; max-width: 450px; background: var(--color-panel); border: 2px solid #222;
+            border-radius: 15px; padding: 30px 20px; margin-top: 20px; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: border-color 0.1s, box-shadow 0.1s;
+        }
+        
+        /* Brillo del contenedor según el golpe */
+        .metronomo-container.flash-acento { border-color: var(--color-acento); box-shadow: 0 0 40px rgba(255, 0, 255, 0.4); }
+        .metronomo-container.flash-pulso { border-color: var(--color-pulso); box-shadow: 0 0 30px rgba(0, 243, 255, 0.3); }
+
+        .bpm-display {
+            font-family: 'Orbitron', sans-serif; font-size: 5.5em; font-weight: 900; color: #fff;
+            margin: 0; line-height: 1; text-shadow: 0 0 20px rgba(255,255,255,0.3); text-align: center; transition: 0.1s;
+        }
+        .bpm-label { font-size: 1.2em; color: #888; font-weight: 900; letter-spacing: 5px; margin-top: -5px; margin-bottom: 20px; }
+
+        .bpm-controls { display: flex; align-items: center; justify-content: center; width: 100%; gap: 15px; margin-bottom: 25px; }
+        
+        .btn-ajuste {
+            background: rgba(255,255,255,0.1); border: none; color: #fff; border-radius: 50%;
+            width: 55px; height: 55px; font-size: 2em; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: 0.2s; font-family: monospace;
+        }
+        .btn-ajuste:active { background: #fff; color: #000; transform: scale(0.9); }
+        
+        .slider-container { flex-grow: 1; }
+        .bpm-slider {
+            width: 100%; appearance: none; height: 10px; background: #333; border-radius: 5px; outline: none; border: 1px solid #555;
+        }
+        .bpm-slider::-webkit-slider-thumb {
+            appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .visual-beats { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; min-height: 25px; width: 100%; }
+        .beat-dot {
+            width: 18px; height: 18px; border-radius: 50%; background: #222; border: 2px solid #444; transition: all 0.05s;
+        }
+        .beat-dot.active-pulso { background: var(--color-pulso); border-color: var(--color-pulso); box-shadow: 0 0 15px var(--color-pulso); transform: scale(1.3); }
+        .beat-dot.active-acento { background: var(--color-acento); border-color: var(--color-acento); box-shadow: 0 0 20px var(--color-acento); transform: scale(1.5); }
+        
+        /* Cuadraditos para las subdivisiones */
+        .subdiv-dot { width: 10px; height: 10px; border-radius: 2px; background: #222; margin-top: 4px; transition: all 0.05s;}
+        .subdiv-dot.active-sub { background: var(--color-subdiv); box-shadow: 0 0 10px var(--color-subdiv); transform: scale(1.3); }
+
+        .extra-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 20px; }
+        
+        .select-moderno {
+            background: #111; border: 1px solid #444; color: #fff; padding: 12px;
+            border-radius: 8px; font-family: 'Rajdhani'; font-weight: 900; font-size: 1.1em; outline: none; text-align: center;
+        }
+        
+        .btn-tap {
+            grid-column: span 2; background: rgba(0, 243, 255, 0.05); border: 2px dashed var(--color-pulso); color: var(--color-pulso);
+            padding: 15px; border-radius: 8px; font-family: 'Orbitron'; font-weight: 900; font-size: 1.2em; cursor: pointer; transition: 0.1s;
+        }
+        .btn-tap:active { background: var(--color-pulso); color: #000; }
+
+        .btn-vibracion {
+            grid-column: span 2; background: transparent; border: 1px solid #555; color: #888;
+            padding: 10px; border-radius: 8px; font-weight: 900; font-size: 1em; cursor: pointer; transition: 0.3s;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-vibracion.on { background: rgba(255, 140, 0, 0.15); border-color: var(--color-subdiv); color: var(--color-subdiv); }
+    </style>
+</head>
+<body>
+
+    <div id="pantalla-login" class="pantalla activa">
+        <h1 class="titulo-activacion">ACCESO REQUERIDO</h1>
+        <div style="margin-top: 20px; width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <p style="color: #777; width: 90%; max-width: 420px; text-align: center; margin-bottom: 20px; font-size: 1.1em;">
+                Ingresa el correo con el que realizaste la compra.
+            </p>
+            <input type="email" id="input-email-login" class="input-cyber" placeholder="Email de Compra">
+            <button class="btn-principal btn-fucsia" onclick="intentarActivar()">INGRESAR AL SISTEMA</button>
+            <p id="mensaje-login" style="color: red; font-weight: bold; margin-top: 15px; font-size: 1.2em;"></p>
+        </div>
+    </div>
+
+    <div id="pantalla-inicio" class="pantalla" style="padding-top: 10px;">
+        <h1 class="titulo-app">METRÓNOMO</h1>
+        
+        <button class="btn-principal btn-cian" onclick="abrirMetronomo()" style="height: 100px; margin-top: 40px;">
+            INICIAR METRÓNOMO
+        </button>
+    </div>
+
+    <div id="pantalla-metronomo" class="pantalla" style="padding-top: 0;">
+        <div class="sticky-bar" id="top-bar">
+            <h2 style="margin:0; font-family: 'Orbitron'; color: #fff; font-size: 1.2em; letter-spacing: 2px;">TEMPO</h2>
+            <button class="sticky-btn" onclick="volverAlMenu()">🔙 MENÚ</button>
+        </div>
+
+        <div class="metronomo-container" id="marco-metronomo">
+            
+            <div class="visual-beats" id="visual-beats">
+                <!-- Se generan dinámicamente con JS -->
+            </div>
+
+            <div class="bpm-display" id="bpm-display">120</div>
+            <div class="bpm-label">BPM</div>
+
+            <div class="bpm-controls">
+                <button class="btn-ajuste" onclick="cambiarBPM(-1)">-</button>
+                <div class="slider-container">
+                    <input type="range" class="bpm-slider" id="bpm-slider" min="30" max="300" value="120" oninput="actualizarSlider(this.value)">
+                </div>
+                <button class="btn-ajuste" onclick="cambiarBPM(1)">+</button>
+            </div>
+
+            <div class="extra-controls">
+                <!-- Select de Compases Ampliado -->
+                <select class="select-moderno" id="compas-select" onchange="cambiarEstructura()">
+                    <option value="1">1 / 4</option>
+                    <option value="2">2 / 4</option>
+                    <option value="3">3 / 4</option>
+                    <option value="4" selected>4 / 4</option>
+                    <option value="5">5 / 4</option>
+                    <option value="6">6 / 8 (2 pulsos)</option>
+                    <option value="7">7 / 8</option>
+                    <option value="9">9 / 8 (3 pulsos)</option>
+                    <option value="12">12 / 8 (4 pulsos)</option>
+                </select>
+
+                <!-- Select de Subdivisiones -->
+                <select class="select-moderno" id="subdiv-select" onchange="cambiarEstructura()">
+                    <option value="1" selected>Negras (1)</option>
+                    <option value="2">Corcheas (2)</option>
+                    <option value="3">Tresillos (3)</option>
+                    <option value="4">Semicorcheas (4)</option>
+                </select>
+
+                <button class="btn-tap" id="btn-tap" onclick="tapTempo()">🖐️ TAP TEMPO</button>
+                
+                <button class="btn-vibracion" id="btn-vib" onclick="toggleVibracion()">
+                    📳 VIBRACIÓN: OFF
+                </button>
+            </div>
+
+            <button id="btn-play" class="btn-principal btn-play" onclick="toggleMetronomo()" style="width: 100%; margin: 0; padding: 25px 0;">
+                ▶ INICIAR
+            </button>
+
+        </div>
+    </div>
+
+    <script>
+        const URL_RECEPCIONISTA = "https://script.google.com/macros/s/AKfycbx6-2gfl9UGXOi5CQDaEC55_89hsRflJGF8DyiC9jz4hw82mhMaEmeK99Y4VxOKoVW6/exec";
+        
+        function obtenerDeviceID() {
+            let id = localStorage.getItem('metronomo_device_id');
+            if (!id) {
+                try {
+                    if (window.crypto && window.crypto.randomUUID) { id = window.crypto.randomUUID(); } 
+                    else { id = 'id-' + Math.random().toString(36).substring(2, 15); }
+                } catch(e) { id = 'id-' + Math.random().toString(36).substring(2, 15); }
+                localStorage.setItem('metronomo_device_id', id);
+            }
+            return id;
+        }
+
+        async function intentarActivar() {
+            let email = document.getElementById('input-email-login').value.trim();
+            let msj = document.getElementById('mensaje-login');
+            if (!email) { msj.innerText = "Por favor, ingresa un correo."; msj.style.color = "red"; return; }
+            msj.innerText = "Conectando con el servidor..."; msj.style.color = "#00f3ff";
+            
+            try {
+                let response = await fetch(URL_RECEPCIONISTA, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ email: email, deviceID: obtenerDeviceID() }) });
+                let data = await response.json();
+                if (data.status === "OK") { localStorage.setItem('metronomo_activado', 'true'); cambiarPantalla('pantalla-inicio'); } 
+                else { msj.innerText = data.message || "Error de validación"; msj.style.color = "red"; }
+            } catch (error) { msj.innerText = "Error: Sin conexión a internet."; msj.style.color = "red"; }
+        }
+
+        function cambiarPantalla(id) {
+            document.querySelectorAll('.pantalla').forEach(p => p.classList.remove('activa'));
+            document.getElementById(id).classList.add('activa');
+            window.scrollTo(0,0);
+        }
+
+        window.onload = () => { if (localStorage.getItem('metronomo_activado') === 'true') cambiarPantalla('pantalla-inicio'); };
+
+        function abrirMetronomo() { cambiarPantalla('pantalla-metronomo'); cambiarEstructura(); }
+        function volverAlMenu() { if(isPlaying) toggleMetronomo(); cambiarPantalla('pantalla-inicio'); }
+
+        let audioContext = null;
+        let isPlaying = false;
+        
+        // Estructura Rítmica
+        let beatsPerMeasure = 4;
+        let subdivision = 1; 
+        
+        let currentBeat = 0;
+        let currentSub = 0;
+        let bpm = 120;
+        
+        // Lookahead Variables
+        let nextNoteTime = 0.0;
+        let lookahead = 25.0; // Milisegundos de frecuencia del timer
+        let scheduleAheadTime = 0.1; // Cuántos segundos adelantarse
+        
+        let notesInQueue = []; 
+        let lastDrawnBeat = -1;
+        let lastDrawnSub = -1;
+
+        let tapTimes = [];
+        let vibracionActiva = false;
+
+        function actualizarSlider(val) {
+            bpm = parseInt(val);
+            document.getElementById('bpm-display').innerText = bpm;
+        }
+
+        function cambiarBPM(delta) {
+            bpm += delta;
+            if(bpm < 30) bpm = 30; if(bpm > 300) bpm = 300;
+            document.getElementById('bpm-slider').value = bpm;
+            document.getElementById('bpm-display').innerText = bpm;
+        }
+
+        function toggleVibracion() {
+            vibracionActiva = !vibracionActiva;
+            let btn = document.getElementById('btn-vib');
+            if(vibracionActiva) {
+                btn.classList.add('on'); btn.innerHTML = "📳 VIBRACIÓN: ON";
+                if(navigator.vibrate) navigator.vibrate(50); // Test
+            } else {
+                btn.classList.remove('on'); btn.innerHTML = "📳 VIBRACIÓN: OFF";
+            }
+        }
+
+        function cambiarEstructura() {
+            beatsPerMeasure = parseInt(document.getElementById('compas-select').value);
+            subdivision = parseInt(document.getElementById('subdiv-select').value);
+            
+            // Ajuste para compases compuestos (6/8, 9/8, 12/8). En estos, el valor del select representa
+            // la cantidad de tiempos fuertes (2, 3, 4) y forzamos la subdivisión a 3 (tresillos) internamente
+            // si el usuario eligió "Negras(1)" para que se sienta como el compás real.
+            let selectText = document.getElementById('compas-select').options[document.getElementById('compas-select').selectedIndex].text;
+            if (selectText.includes('/ 8') && subdivision === 1) {
+                // Si es 6/8 y no puso subdivision, forzamos visualmente a tresillos para sentir el pulso.
+                subdivision = 3; 
+                document.getElementById('subdiv-select').value = "3";
+            }
+
+            generarDots();
+        }
+
+        function generarDots() {
+            const container = document.getElementById('visual-beats');
+            container.innerHTML = '';
+            
+            for(let b=0; b<beatsPerMeasure; b++) {
+                // Contenedor para el tiempo y sus subdivisiones
+                let grupo = document.createElement('div');
+                grupo.style.display = 'flex'; grupo.style.flexDirection = 'column'; grupo.style.alignItems = 'center';
+                
+                // Punto del Pulso Fuerte
+                let dot = document.createElement('div');
+                dot.className = 'beat-dot';
+                dot.id = `dot-beat-${b}`;
+                grupo.appendChild(dot);
+                
+                // Puntos de Subdivisión
+                if(subdivision > 1) {
+                    let subCont = document.createElement('div');
+                    subCont.style.display = 'flex'; subCont.style.gap = '3px'; subCont.style.marginTop = '4px';
+                    for(let s=1; s<subdivision; s++) {
+                        let sDot = document.createElement('div');
+                        sDot.className = 'subdiv-dot';
+                        sDot.id = `dot-sub-${b}-${s}`;
+                        subCont.appendChild(sDot);
+                    }
+                    grupo.appendChild(subCont);
+                }
+                container.appendChild(grupo);
+            }
+        }
+
+        function tapTempo() {
+            let now = Date.now();
+            let btn = document.getElementById('btn-tap');
+            btn.style.backgroundColor = "rgba(0, 243, 255, 0.3)";
+            setTimeout(() => btn.style.backgroundColor = "transparent", 100);
+
+            if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) { tapTimes = []; }
+            tapTimes.push(now);
+            if (tapTimes.length > 4) { tapTimes.shift(); }
+            
+            if (tapTimes.length >= 2) {
+                let sum = 0;
+                for (let i = 1; i < tapTimes.length; i++) { sum += (tapTimes[i] - tapTimes[i - 1]); }
+                let avgMs = sum / (tapTimes.length - 1);
+                let newBpm = Math.round(60000 / avgMs);
+                
+                if (newBpm >= 30 && newBpm <= 300) {
+                    bpm = newBpm;
+                    document.getElementById('bpm-slider').value = bpm;
+                    document.getElementById('bpm-display').innerText = bpm;
+                }
+            }
+        }
+
+        function nextNote() {
+            // Avanzamos el tiempo según el BPM y la subdivisión actual
+            const secondsPerBeat = 60.0 / bpm;
+            nextNoteTime += secondsPerBeat / subdivision;
+            
+            currentSub++;
+            if (currentSub >= subdivision) {
+                currentSub = 0;
+                currentBeat++;
+                if (currentBeat >= beatsPerMeasure) {
+                    currentBeat = 0;
+                }
+            }
+        }
+
+        function scheduleNote(beatNum, subNum, time) {
+            // Guardamos para la animación visual
+            notesInQueue.push({ beat: beatNum, sub: subNum, time: time });
+            
+            // SÍNTESIS DE SONIDO ANALÓGICO (Woodblock / Click de madera)
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            let isAccent = (beatNum === 0 && subNum === 0);
+            let isSub = (subNum > 0);
+
+            // Frecuencias para emular golpeteo físico
+            let freqStart = isAccent ? 1400 : (isSub ? 600 : 900);
+            let freqEnd = freqStart * 0.1; // Caída rápida de tono para que suene a "golpe" y no a "pito"
+            
+            osc.frequency.setValueAtTime(freqStart, time);
+            osc.frequency.exponentialRampToValueAtTime(freqEnd, time + 0.02);
+            
+            // Envolvente de volumen hiper corta
+            let vol = isAccent ? 1.0 : (isSub ? 0.3 : 0.7); // Subdivisión más bajita
+            gain.gain.setValueAtTime(vol, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+            
+            osc.start(time);
+            osc.stop(time + 0.05);
+        }
+
+        function scheduler() {
+            while (nextNoteTime < audioContext.currentTime + scheduleAheadTime) {
+                scheduleNote(currentBeat, currentSub, nextNoteTime);
+                nextNote();
+            }
+            if (isPlaying) { setTimeout(scheduler, lookahead); }
+        }
+
+        function triggerFlash(tipo) {
+            // tipo: 'acento', 'pulso', 'subdiv'
+            document.body.classList.remove('flash-acento', 'flash-pulso', 'flash-subdiv');
+            document.getElementById('marco-metronomo').classList.remove('flash-acento', 'flash-pulso');
+            
+            // Pequeño reflow para reiniciar CSS transition
+            void document.body.offsetWidth; 
+            
+            if(tipo === 'acento' || tipo === 'pulso') {
+                document.getElementById('marco-metronomo').classList.add('flash-' + tipo);
+            }
+            document.body.classList.add('flash-' + tipo);
+            
+            setTimeout(() => {
+                document.body.classList.remove('flash-' + tipo);
+                document.getElementById('marco-metronomo').classList.remove('flash-acento', 'flash-pulso');
+            }, 100);
+        }
+
+        function drawVisuals() {
+            if (!isPlaying) return;
+            
+            let currentTime = audioContext.currentTime;
+            let drawBeat = lastDrawnBeat;
+            let drawSub = lastDrawnSub;
+
+            // Procesar la cola de notas para encontrar la actual
+            while (notesInQueue.length && notesInQueue[0].time < currentTime) {
+                drawBeat = notesInQueue[0].beat;
+                drawSub = notesInQueue[0].sub;
+                notesInQueue.splice(0, 1);
+            }
+
+            // Si cambió la nota, actualizamos todo (Visual y Háptico)
+            if (lastDrawnBeat !== drawBeat || lastDrawnSub !== drawSub) {
+                
+                // Apagar todo
+                document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active-pulso', 'active-acento'));
+                document.querySelectorAll('.subdiv-dot').forEach(d => d.classList.remove('active-sub'));
+                
+                // Encender correspondiente y detonar acciones físicas
+                if (drawSub === 0) {
+                    // Es un tiempo fuerte/normal
+                    let dot = document.getElementById(`dot-beat-${drawBeat}`);
+                    if (dot) {
+                        if (drawBeat === 0) {
+                            dot.classList.add('active-acento');
+                            triggerFlash('acento');
+                            if (vibracionActiva && navigator.vibrate) navigator.vibrate(60); // Fuerte
+                        } else {
+                            dot.classList.add('active-pulso');
+                            triggerFlash('pulso');
+                            if (vibracionActiva && navigator.vibrate) navigator.vibrate(25); // Corta
+                        }
+                    }
+                } else {
+                    // Es una subdivisión
+                    let subDot = document.getElementById(`dot-sub-${drawBeat}-${drawSub}`);
+                    if (subDot) {
+                        subDot.classList.add('active-sub');
+                        triggerFlash('subdiv');
+                        if (vibracionActiva && navigator.vibrate) navigator.vibrate(10); // Micro-vibracion
+                    }
+                }
+                
+                lastDrawnBeat = drawBeat;
+                lastDrawnSub = drawSub;
+            }
+            
+            requestAnimationFrame(drawVisuals);
+        }
+
+        function initAudio() {
+            if (audioContext == null) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') { audioContext.resume(); }
+        }
+
+        function toggleMetronomo() {
+            let btn = document.getElementById('btn-play');
+            isPlaying = !isPlaying;
+            
+            if (isPlaying) {
+                // Iniciar motor
+                currentBeat = 0; currentSub = 0;
+                notesInQueue = [];
+                lastDrawnBeat = -1; lastDrawnSub = -1;
+                
+                initAudio();
+                nextNoteTime = audioContext.currentTime + 0.05;
+                scheduler(); 
+                requestAnimationFrame(drawVisuals); 
+                
+                btn.innerText = "⏸ DETENER";
+                btn.classList.add('activo');
+                document.getElementById('top-bar').style.borderColor = "var(--color-acento)";
+            } else {
+                // Detener motor
+                btn.innerText = "▶ INICIAR";
+                btn.classList.remove('activo');
+                document.getElementById('top-bar').style.borderColor = "var(--color-pulso)";
+                
+                // Apagar visuales remanentes
+                document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active-pulso', 'active-acento'));
+                document.querySelectorAll('.subdiv-dot').forEach(d => d.classList.remove('active-sub'));
+                document.body.classList.remove('flash-acento', 'flash-pulso', 'flash-subdiv');
+                document.getElementById('marco-metronomo').classList.remove('flash-acento', 'flash-pulso');
+            }
+        }
+    </script>
+</body>
+</html>
